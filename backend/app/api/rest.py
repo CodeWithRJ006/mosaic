@@ -93,29 +93,12 @@ def generate_recovery(payload: dict, db: Session = Depends(get_db)):
     # 1. Candidate Generation
     gen = CandidateGenerator(db, current_time=now)
     candidates = gen.generate_candidates(shipment)
-    
-    # 2. Hard Constraint Filter
-    for c in candidates:
-        v = db.query(Vehicle).filter(Vehicle.id == c.vehicle_id).first()
-        feasible, reason = HardConstraintFilter.evaluate(
-            shipment=shipment,
-            vehicle=v,
-            pickup_hub=c.pickup_hub,
-            dropoff_hub=c.dropoff_hub,
-            pickup_time=c.pickup_time,
-            dropoff_time=c.dropoff_time,
-            current_time=now,
-            path_min_capacity_weight=c.path_min_weight,
-            path_min_capacity_volume=c.path_min_volume
-        )
-        c.is_feasible = feasible
-        c.rejection_reason = reason
         
-    # 3. Optimize
+    # 2. Optimize
     opt = ORToolsOptimizer(shipments=[shipment], all_candidates=candidates)
     result = opt.solve()
     
-    # 4. Save to DB
+    # 3. Save to DB
     manager = StateManager(db)
     primary_c = result.primary[0] if result.primary else None
     shadow_c = result.shadow[0] if result.shadow else None
@@ -133,29 +116,29 @@ def generate_recovery(payload: dict, db: Session = Depends(get_db)):
             eta=c.dropoff_time,
             incremental_cost=c.incremental_cost,
             extra_distance=c.distance,
-            sla_margin_minutes=0.0, # Handled in receipt check
+            sla_margin_minutes=0.0,
             constraint_checks={
-                "pickup_hub": c.pickup_hub, "dropoff_hub": c.dropoff_hub,
-                "pickup_time": c.pickup_time.isoformat(), "dropoff_time": c.dropoff_time.isoformat(),
-                "path_min_weight": c.path_min_weight, "path_min_volume": c.path_min_volume
+                "path_min_weight": c.path_min_weight,
+                "path_min_volume": c.path_min_volume,
+                "pickup_time": c.pickup_time.isoformat(),
+                "dropoff_time": c.dropoff_time.isoformat(),
+                "pickup_hub": c.pickup_hub,
+                "dropoff_hub": c.dropoff_hub
             },
-            rejection_reasons={},
+            rejection_reasons=result.rejection_breakdown,
             created_at=now
         )
         
-    primary_plan = None
+    p_plan, s_plan = None, None
     if primary_c:
-        primary_plan = _create_db_plan(primary_c, "PRIMARY", "FEASIBLE")
-        db.add(primary_plan)
-    
-    shadow_plan = None
+        p_plan = _create_db_plan(primary_c, "PRIMARY", "DRAFT")
+        db.add(p_plan)
     if shadow_c:
-        shadow_plan = _create_db_plan(shadow_c, "SHADOW", "FEASIBLE")
-        db.add(shadow_plan)
+        s_plan = _create_db_plan(shadow_c, "SHADOW", "DRAFT")
+        db.add(s_plan)
         
     db.commit()
     
-    # 5. Build Receipt
     receipt = ReceiptBuilder.build_receipt(
         shipment=shipment,
         status=result.status,
@@ -163,13 +146,10 @@ def generate_recovery(payload: dict, db: Session = Depends(get_db)):
         selected_candidate=primary_c,
         current_time=now
     )
-    
-    # Embellish receipt with plan_id (for the API to use for approval)
-    receipt_dict = receipt.model_dump()
-    if primary_plan:
-        receipt_dict["plan_id"] = primary_plan.plan_id
-        
-    return receipt_dict
+    if p_plan:
+        receipt.plan_id = p_plan.plan_id
+    receipt.objective_trace = result.objective_trace
+    return receipt
 
 @router.post("/recovery/{plan_id}/approve")
 def approve_plan(plan_id: str, db: Session = Depends(get_db)):
@@ -178,11 +158,19 @@ def approve_plan(plan_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Plan not found")
         
     manager = StateManager(db)
-    lifecycle = PlanLifecycle(db, manager.current_version, [])
+    cascaded_events = []
+    lifecycle = PlanLifecycle(db, manager.current_version, cascaded_events)
     
     try:
         lifecycle.approve_plan(plan)
         db.commit()
+        
+        # Dispatch any cascaded events (like PLAN_APPROVED)
+        for e_type, e_payload in cascaded_events:
+            if "timestamp" not in e_payload:
+                e_payload["timestamp"] = datetime.now(timezone.utc).isoformat()
+            import asyncio
+            asyncio.run(manager.dispatch(e_type, e_payload))
         return {"status": "APPROVED", "plan_id": plan.plan_id}
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))

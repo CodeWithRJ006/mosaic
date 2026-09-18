@@ -24,6 +24,8 @@ class HardConstraintFilter:
         current_time: datetime,
         path_min_capacity_weight: float,
         path_min_capacity_volume: float,
+        pickup_hub_obj = None,
+        dropoff_hub_obj = None,
         is_transfer: bool = False,
         transfer_duration_minutes: float = 0.0,
         downstream_delay_minutes: float = 0.0
@@ -47,8 +49,24 @@ class HardConstraintFilter:
         if dropoff_time > sla:
             return False, RejectionReason.DEADLINE_IMPOSSIBLE
             
-        # 5. Hub Operational Window (mock logic: hubs closed between 2AM and 4AM)
-        if 2 <= pickup_time.hour < 4 or 2 <= dropoff_time.hour < 4:
+        # 5. Hub Operational Window
+        # Use dynamic config from scenario data
+        def _is_open(dt: datetime, hub_obj) -> bool:
+            if not hub_obj or hub_obj.status != "OPEN": return False
+            if hub_obj.operating_start == "00:00" and hub_obj.operating_end == "23:59": return True
+            start_h, start_m = map(int, hub_obj.operating_start.split(':'))
+            end_h, end_m = map(int, hub_obj.operating_end.split(':'))
+            start_mins = start_h * 60 + start_m
+            end_mins = end_h * 60 + end_m
+            dt_mins = dt.hour * 60 + dt.minute
+            if start_mins <= end_mins:
+                return start_mins <= dt_mins <= end_mins
+            else:
+                return dt_mins >= start_mins or dt_mins <= end_mins
+
+        if pickup_hub_obj and not _is_open(pickup_time, pickup_hub_obj):
+            return False, RejectionReason.HUB_UNAVAILABLE
+        if dropoff_hub_obj and not _is_open(dropoff_time, dropoff_hub_obj):
             return False, RejectionReason.HUB_UNAVAILABLE
             
         # 6. Transfer time impossible (if applicable)

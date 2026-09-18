@@ -13,6 +13,9 @@ class PlanLifecycle:
         self.cascaded_events = cascaded_events
 
     def approve_plan(self, plan: RecoveryPlan):
+        if plan.status == "APPROVED":
+            raise ValueError("PLAN_ALREADY_APPROVED")
+            
         if plan.state_version != self.current_version:
             raise ValueError(f"Stale plan (plan version {plan.state_version} != current {self.current_version})")
             
@@ -25,6 +28,10 @@ class PlanLifecycle:
         pickup_time = datetime.fromisoformat(plan.constraint_checks.get("pickup_time"))
         dropoff_time = datetime.fromisoformat(plan.constraint_checks.get("dropoff_time"))
         
+        from app.models.db import Hub
+        pickup_hub_obj = self.db.query(Hub).filter(Hub.id == plan.constraint_checks.get("pickup_hub")).first()
+        dropoff_hub_obj = self.db.query(Hub).filter(Hub.id == plan.constraint_checks.get("dropoff_hub")).first()
+        
         feasible, reason = HardConstraintFilter.evaluate(
             shipment=shipment,
             vehicle=vehicle,
@@ -34,7 +41,9 @@ class PlanLifecycle:
             dropoff_time=dropoff_time,
             current_time=datetime.now(timezone.utc),
             path_min_capacity_weight=plan.constraint_checks.get("path_min_weight", 0),
-            path_min_capacity_volume=plan.constraint_checks.get("path_min_volume", 0)
+            path_min_capacity_volume=plan.constraint_checks.get("path_min_volume", 0),
+            pickup_hub_obj=pickup_hub_obj,
+            dropoff_hub_obj=dropoff_hub_obj
         )
         
         if not feasible:

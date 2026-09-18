@@ -5,6 +5,7 @@ from app.models.events import EventType, validate_payload, EventSchema
 from app.api.ws import manager
 import asyncio
 import uuid
+from datetime import datetime, timezone
 
 class StateManager:
     def __init__(self, db_session: Session):
@@ -27,12 +28,39 @@ class StateManager:
         new_version = self.current_version
         
         # 3. Create Event ORM object
+        event_ts_str = payload.get("timestamp")
+        if event_ts_str:
+            from dateutil import parser
+            event_ts = parser.parse(event_ts_str)
+            if event_ts.tzinfo is None:
+                event_ts = event_ts.replace(tzinfo=timezone.utc)
+        else:
+            event_ts = datetime.now(timezone.utc)
+
         event_schema = EventSchema(
             id=str(uuid.uuid4()),
             type=event_type,
+            timestamp=event_ts,
             payload=payload,
             state_version=new_version
         )
+        
+        # Time-travel protection
+        latest_event_ts = self.db.query(func.max(Event.timestamp)).scalar()
+        if latest_event_ts:
+            if latest_event_ts.tzinfo is None:
+                latest_event_ts = latest_event_ts.replace(tzinfo=timezone.utc)
+            if event_schema.timestamp < latest_event_ts:
+                raise ValueError(f"EVENT_REJECTED: Timestamp older than current simulation state. {event_schema.timestamp} < {latest_event_ts}")
+        
+        # State transition enforcement
+        if event_type == EventType.SHIPMENT_MISROUTED.value:
+            s_id = payload.get("shipment_id")
+            shipment = self.db.query(Shipment).filter(Shipment.id == s_id).first()
+            if shipment and shipment.status in ["RECOVERED", "RECOVERY_PENDING"]:
+                raise ValueError("INVALID_STATE_TRANSITION: Shipment already in recovery")
+            if shipment:
+                shipment.status = "EXCEPTION"
         
         db_event = Event(
             id=event_schema.id,

@@ -1,18 +1,18 @@
 {
-  "timestamp": "2026-09-18T17:27:22.208499",
-  "scenarios": 20,
+  "timestamp": "2026-09-18T17:47:46.132744",
+  "scenarios": 2,
   "mosaic": {
     "success_rate": 100.0,
     "sla_violation_rate": 0.0,
-    "avg_cost": 65.625,
-    "avg_distance": 26.25,
-    "avg_latency_ms": 715.5798810001215
+    "avg_cost": 68.75,
+    "avg_distance": 27.5,
+    "avg_latency_ms": 787.1823734999452
   },
   "baseline": {
     "success_rate": 100.0,
     "sla_violation_rate": 0.0,
-    "avg_cost": 5.625,
-    "avg_distance": 2.25,
-    "avg_latency_ms": 594.3063646499922
+    "avg_cost": 0.0,
+    "avg_distance": 0.0,
+    "avg_latency_ms": 642.8068695004185
   }
 }

@@ -26,9 +26,9 @@ This script walks through the core capabilities of the MOSAIC Recovery Engine.
 
 ## Phase 4: Recovery Options & Decision Trace
 1. **View Recovery Screen**
-   - You are presented with mathematically optimal options:
-     - **Primary Plan (Optimal Strategy)**
-     - **Shadow Plan (Fallback Strategy)**
+   - You are presented with the best feasible options found within our solver budget:
+     - **Primary Plan (Best Feasible Strategy)**
+     - **Shadow Plan (Independent Fallback Strategy)**
    - The metrics shown (ETA, Incremental Cost, Extra Distance, Transfers) are exact calculations from the solver. No mocked numbers.
    - *If no feasible piggyback exists*, a "No Feasible Piggyback" chart renders, displaying a breakdown of exactly *why* candidates were rejected (e.g. "SLA_VIOLATION").
 2. **Click "Decision Trace"**

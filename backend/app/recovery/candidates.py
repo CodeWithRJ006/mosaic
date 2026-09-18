@@ -137,6 +137,10 @@ class CandidateGenerator:
                     )
                     candidates.append(c)
                     
+        # Pre-fetch hubs for operational constraints
+        from app.models.db import Hub
+        hubs_map = {h.id: h for h in self.db.query(Hub).all()}
+
         # Run constraint filter over candidates
         for c in candidates:
             feasible, reason = HardConstraintFilter.evaluate(
@@ -148,7 +152,9 @@ class CandidateGenerator:
                 dropoff_time=c.dropoff_time,
                 current_time=self.current_time,
                 path_min_capacity_weight=c.path_min_weight,
-                path_min_capacity_volume=c.path_min_volume
+                path_min_capacity_volume=c.path_min_volume,
+                pickup_hub_obj=hubs_map.get(c.pickup_hub),
+                dropoff_hub_obj=hubs_map.get(c.dropoff_hub)
             )
             c.is_feasible = feasible
             c.rejection_reason = reason

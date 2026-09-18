@@ -14,6 +14,7 @@ class DecisionReceipt(BaseModel):
     plan_id: Optional[str] = None
     shipment_id: str
     status: str
+    objective_trace: dict = {}
     
     # Selected plan info (primary or shadow)
     selected_vehicle_id: Optional[str] = None

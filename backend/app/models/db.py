@@ -11,6 +11,10 @@ class Hub(Base):
     name = Column(String, nullable=False)
     lat = Column(Float, nullable=False)
     lon = Column(Float, nullable=False)
+    operating_start = Column(String, default="00:00")
+    operating_end = Column(String, default="23:59")
+    transfer_capacity = Column(Integer, default=100)
+    status = Column(String, default="OPEN")
 
 class Vehicle(Base):
     __tablename__ = "vehicles"

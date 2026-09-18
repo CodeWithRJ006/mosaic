@@ -1,7 +1,7 @@
 import collections
 import time
 from ortools.sat.python import cp_model
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Any
 from pydantic import BaseModel
 import logging
 from app.recovery.candidates import CandidateRoute
@@ -12,6 +12,7 @@ class OptimizeResult(BaseModel):
     primary: Optional[List[CandidateRoute]] = None
     shadow: Optional[List[CandidateRoute]] = None
     rejection_breakdown: Dict[str, int] = {}
+    objective_trace: Dict[str, Any] = {}
 
 class ORToolsOptimizer:
     def __init__(self, shipments: List[Shipment], all_candidates: List[CandidateRoute], time_limit_seconds: float = 2.0):
@@ -29,7 +30,7 @@ class ORToolsOptimizer:
         if not feasible:
             return OptimizeResult(status="NO_FEASIBLE_PIGGYBACK", rejection_breakdown=dict(breakdown))
             
-        primary, status = self._lexicographic_solve(feasible)
+        primary, status, primary_trace = self._lexicographic_solve(feasible)
         
         if not primary:
             return OptimizeResult(status="NO_FEASIBLE_PIGGYBACK", rejection_breakdown=dict(breakdown))
@@ -38,11 +39,11 @@ class ORToolsOptimizer:
         primary_vehicles = {c.vehicle_id for c in primary}
         shadow_candidates = [c for c in feasible if c.vehicle_id not in primary_vehicles]
         
-        shadow, _ = self._lexicographic_solve(shadow_candidates) if shadow_candidates else (None, "NO_FEASIBLE_PIGGYBACK")
+        shadow, shadow_status, shadow_trace = self._lexicographic_solve(shadow_candidates) if shadow_candidates else (None, "NO_FEASIBLE_PIGGYBACK", {})
             
-        return OptimizeResult(status=status, primary=primary, shadow=shadow, rejection_breakdown=dict(breakdown))
+        return OptimizeResult(status=status, primary=primary, shadow=shadow, rejection_breakdown=dict(breakdown), objective_trace=primary_trace)
         
-    def _lexicographic_solve(self, candidates: List[CandidateRoute]) -> Tuple[Optional[List[CandidateRoute]], str]:
+    def _lexicographic_solve(self, candidates: List[CandidateRoute]) -> Tuple[Optional[List[CandidateRoute]], str, Dict[str, Any]]:
         start_time = time.time()
         
         model = cp_model.CpModel()
@@ -86,14 +87,17 @@ class ORToolsOptimizer:
             solver.parameters.max_time_in_seconds = get_time_left()
             return solver.Solve(model)
 
+        objective_trace = {}
+
         # Stage 1: Maximize SLA feasibility (count of recovered shipments)
         sla_expr = sum(x)
         status = solve_stage(sla_expr, True)
         if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-            return None, "NO_FEASIBLE_PIGGYBACK"
+            return None, "NO_FEASIBLE_PIGGYBACK", {}
             
         max_recovered = int(solver.ObjectiveValue())
         model.Add(sla_expr == max_recovered)
+        objective_trace["SLA_recovered"] = max_recovered
         
         # Stage 2: Minimize delay
         delay_expr = sum(int(candidates[i].delay_minutes * SCALE) * x[i] for i in range(len(x)))
@@ -101,6 +105,7 @@ class ORToolsOptimizer:
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             min_delay = int(solver.ObjectiveValue())
             model.Add(delay_expr == min_delay)
+            objective_trace["min_delay"] = min_delay / SCALE
             
         # Stage 3: Minimize cost
         cost_expr = sum(int(candidates[i].incremental_cost * SCALE) * x[i] for i in range(len(x)))
@@ -108,6 +113,7 @@ class ORToolsOptimizer:
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             min_cost = int(solver.ObjectiveValue())
             model.Add(cost_expr == min_cost)
+            objective_trace["min_cost"] = min_cost / SCALE
             
         # Stage 4: Minimize transfers
         transfers_expr = sum(int(candidates[i].transfers) * x[i] for i in range(len(x)))
@@ -115,6 +121,7 @@ class ORToolsOptimizer:
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             min_transfers = int(solver.ObjectiveValue())
             model.Add(transfers_expr == min_transfers)
+            objective_trace["min_transfers"] = min_transfers
             
         # Stage 5: Minimize distance
         dist_expr = sum(int(candidates[i].distance * SCALE) * x[i] for i in range(len(x)))
@@ -122,6 +129,7 @@ class ORToolsOptimizer:
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             min_dist = int(solver.ObjectiveValue())
             model.Add(dist_expr == min_dist)
+            objective_trace["min_distance"] = min_dist / SCALE
             
         # Extract selected candidates
         selected = []
@@ -131,4 +139,4 @@ class ORToolsOptimizer:
                 
         final_status = "OPTIMAL" if status == cp_model.OPTIMAL else "FEASIBLE"
         self.logger.info(f"CP-SAT Lexicographic Solve complete. Status: {final_status}. Time left: {get_time_left()}s")
-        return selected, final_status
+        return selected, final_status, objective_trace

@@ -54,11 +54,29 @@ export default function ControlTowerScreen() {
   // Init Map
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
+    
+    const offlineStyle = {
+      version: 8 as const,
+      sources: {},
+      layers: [{
+        id: 'background',
+        type: 'background',
+        paint: { 'background-color': '#0f172a' }
+      }]
+    };
+
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-      center: [-95, 38], // US center
-      zoom: 4
+      style: navigator.onLine ? 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json' : offlineStyle,
+      center: [-74.0, 40.7], // NY/NJ center (matches data)
+      zoom: 9 // Closer zoom since we focus on NY/NJ hubs
+    });
+    
+    map.current.on('error', (e) => {
+      // Graceful offline fallback if cartocdn is blocked
+      if (e.error && e.error.message && e.error.message.includes('fetch')) {
+        map.current?.setStyle(offlineStyle);
+      }
     });
 
     return () => {
