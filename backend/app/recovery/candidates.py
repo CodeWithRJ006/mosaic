@@ -26,6 +26,12 @@ class CandidateRoute(BaseModel):
     path_min_volume: float
     is_transfer: bool = False
     
+    # Metrics for optimization
+    delay_minutes: float = 0.0
+    incremental_cost: float = 0.0
+    transfers: int = 0
+    distance: float = 0.0
+    
     # After filtering
     is_feasible: bool = False
     rejection_reason: Optional[RejectionReason] = None
