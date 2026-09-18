@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import type { Shipment } from '../lib/api';
 import { wsClient } from '../lib/ws';
-import { ArrowRight, Box, Play, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowRight, Box, Play } from 'lucide-react';
 
 export default function IncidentScreen() {
   const { shipmentId } = useParams();
@@ -12,7 +12,6 @@ export default function IncidentScreen() {
   const [shipment, setShipment] = useState<Shipment | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [receipt, setReceipt] = useState<any>(null);
 
   const loadData = async () => {
     const shipments = await api.getShipments();
@@ -35,7 +34,7 @@ export default function IncidentScreen() {
     setGenerating(true);
     try {
       const res = await api.generateRecovery(shipmentId!);
-      setReceipt(res);
+      navigate(`/recovery/${shipmentId}`, { state: { receipt: res } });
     } catch (e) {
       console.error(e);
     }
@@ -108,61 +107,6 @@ export default function IncidentScreen() {
           </button>
         </div>
 
-        {receipt && (
-          <div className="mt-4 bg-slate-900 rounded-lg p-6 border border-emerald-900/50">
-            <div className="flex items-center gap-3 mb-6">
-              {receipt.status === 'NO_FEASIBLE_PIGGYBACK' ? (
-                <XCircle className="w-6 h-6 text-rose-500" />
-              ) : (
-                <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-              )}
-              <h4 className="text-lg font-bold text-emerald-400">Decision Receipt: {receipt.status}</h4>
-            </div>
-            
-            {receipt.status !== 'NO_FEASIBLE_PIGGYBACK' && (
-              <div className="grid grid-cols-2 gap-4 text-sm mb-6">
-                <div className="flex justify-between border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">Primary Plan ID</span>
-                  <span className="font-mono text-blue-400">{receipt.plan_id}</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">Weight Margin</span>
-                  <span className="font-mono text-emerald-400">+{receipt.weight_check_margin} kg</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">Time Margin</span>
-                  <span className="font-mono text-emerald-400">+{receipt.time_check_pickup_margin_minutes} min</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">SLA Margin</span>
-                  <span className="font-mono text-emerald-400">+{receipt.delivery_check_sla_margin_minutes} min</span>
-                </div>
-              </div>
-            )}
-
-            <div className="mt-6">
-              <h5 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Rejected Candidate Summary</h5>
-              <div className="flex flex-wrap gap-2">
-                {receipt.rejected_candidates.length === 0 ? (
-                  <span className="text-sm text-slate-500">None</span>
-                ) : (
-                  receipt.rejected_candidates.slice(0, 5).map((rc: any) => (
-                    <div key={rc.candidate_id} className="bg-slate-800 text-xs px-2 py-1 rounded border border-slate-700 flex items-center gap-2">
-                      <span className="font-mono text-slate-400">{rc.vehicle_id}</span>
-                      <span className="text-rose-400/80">{rc.rejection_reason}</span>
-                    </div>
-                  ))
-                )}
-                {receipt.rejected_candidates.length > 5 && (
-                  <div className="bg-slate-800 text-xs px-2 py-1 rounded border border-slate-700 text-slate-500">
-                    +{receipt.rejected_candidates.length - 5} more
-                  </div>
-                )}
-              </div>
-            </div>
-
-          </div>
-        )}
       </div>
 
     </div>

@@ -78,5 +78,17 @@ export const api = {
     const res = await fetch(`${API_BASE}/recovery/${shipmentId}/active`);
     if (!res.ok) return null;
     return res.json();
+  },
+
+  async getPlans(shipmentId: string) {
+    const res = await fetch(`${API_BASE}/recovery/${shipmentId}/plans`);
+    return res.json();
+  },
+
+  async approvePlan(planId: string) {
+    const res = await fetch(`${API_BASE}/recovery/${planId}/approve`, {
+      method: 'POST'
+    });
+    return res.json();
   }
 };

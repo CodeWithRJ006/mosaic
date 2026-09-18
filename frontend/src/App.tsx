@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { wsClient } from './lib/ws';
 import ControlTowerScreen from './screens/ControlTowerScreen';
 import IncidentScreen from './screens/IncidentScreen';
+import RecoveryScreen from './screens/RecoveryScreen';
+import DecisionTraceScreen from './screens/DecisionTraceScreen';
 import { Navigation } from 'lucide-react';
 
 function App() {
@@ -37,6 +39,8 @@ function App() {
           <Routes>
             <Route path="/" element={<ControlTowerScreen />} />
             <Route path="/incident/:shipmentId" element={<IncidentScreen />} />
+            <Route path="/recovery/:shipmentId" element={<RecoveryScreen />} />
+            <Route path="/trace/:shipmentId" element={<DecisionTraceScreen />} />
           </Routes>
         </main>
       </div>

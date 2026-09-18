@@ -196,3 +196,17 @@ def get_active_plan(shipment_id: str, db: Session = Depends(get_db)):
     if not plan:
         raise HTTPException(status_code=404, detail="No active approved plan")
     return {"plan_id": plan.plan_id, "strategy": plan.strategy, "status": plan.status}
+
+@router.get("/recovery/{shipment_id}/plans")
+def get_plans(shipment_id: str, db: Session = Depends(get_db)):
+    plans = db.query(RecoveryPlan).filter(RecoveryPlan.incident_id == shipment_id).all()
+    # return simple dictionaries so we don't have to map pydantic if we don't want to
+    return [{
+        "plan_id": p.plan_id,
+        "strategy": p.strategy,
+        "status": p.status,
+        "vehicles": p.vehicles,
+        "eta": p.eta.isoformat(),
+        "incremental_cost": p.incremental_cost,
+        "extra_distance": p.extra_distance
+    } for p in plans]
