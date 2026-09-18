@@ -43,7 +43,8 @@ class StateManager:
         )
         
         # 4. Apply Projection Mutations
-        self._apply_projection(db_event)
+        cascaded_events = []
+        self._apply_projection(db_event, cascaded_events)
         
         # 5. Persist
         self.db.add(db_event)
@@ -60,9 +61,13 @@ class StateManager:
             }
         })
         
+        # 7. Dispatch cascaded events sequentially
+        for c_type, c_payload in cascaded_events:
+            await self.dispatch(c_type, c_payload)
+            
         return db_event
 
-    def _apply_projection(self, event: Event):
+    def _apply_projection(self, event: Event, cascaded_events: list):
         if event.type == EventType.VEHICLE_POSITION_UPDATED.value:
             v_id = event.payload.get("vehicle_id")
             new_loc = event.payload.get("location")
@@ -70,4 +75,16 @@ class StateManager:
                 vehicle = self.db.query(Vehicle).filter(Vehicle.id == v_id).first()
                 if vehicle:
                     vehicle.current_location = new_loc
-        # Add more mutators here as needed for other events
+                    
+        # Check staleness if it's a mutating physical event
+        if event.type in [
+            EventType.VEHICLE_POSITION_UPDATED.value,
+            EventType.VEHICLE_DELAYED.value,
+            EventType.VEHICLE_BREAKDOWN.value,
+            EventType.HUB_CLOSED.value,
+            EventType.HUB_REOPENED.value,
+            EventType.CAPACITY_CHANGED.value
+        ]:
+            from app.recovery.lifecycle import PlanLifecycle
+            lifecycle = PlanLifecycle(self.db, self.current_version, cascaded_events)
+            lifecycle.check_staleness(event)

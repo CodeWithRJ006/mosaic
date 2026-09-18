@@ -77,7 +77,7 @@ def test_state_engine_and_ws():
         db.add(v)
         db.commit()
         
-        replay_manager._apply_projection(events_in_db[0])
+        replay_manager._apply_projection(events_in_db[0], [])
         db.commit()
         
         v_updated = db.query(Vehicle).filter_by(id="V1").first()

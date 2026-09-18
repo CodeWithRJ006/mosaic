@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import Tuple, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.models.db import Shipment, Vehicle
 
 class RejectionReason(str, Enum):
@@ -42,7 +42,9 @@ class HardConstraintFilter:
             return False, RejectionReason.INSUFFICIENT_CAPACITY
             
         # 4. Deadline Impossible
-        if dropoff_time > shipment.sla_deadline:
+        sla = shipment.sla_deadline
+        if sla.tzinfo is None: sla = sla.replace(tzinfo=timezone.utc)
+        if dropoff_time > sla:
             return False, RejectionReason.DEADLINE_IMPOSSIBLE
             
         # 5. Hub Operational Window (mock logic: hubs closed between 2AM and 4AM)
