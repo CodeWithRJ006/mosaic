@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-09-18T17:08:08.016936",
+  "scenarios": 20,
+  "mosaic": {
+    "success_rate": 75.0,
+    "sla_violation_rate": 0.0,
+    "avg_cost": 0.0,
+    "avg_distance": 0.0,
+    "avg_latency_ms": 20.571715199980645
+  },
+  "baseline": {
+    "success_rate": 85.0,
+    "sla_violation_rate": 0.0,
+    "avg_cost": 0.0,
+    "avg_distance": 0.0,
+    "avg_latency_ms": 3.4116296999854967
+  }
+}
