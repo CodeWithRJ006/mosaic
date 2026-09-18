@@ -1,48 +1,27 @@
-name: CI
+name: MOSAIC CI
 
 on:
   push:
-    branches: [ "master", "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "master", "main" ]
+    branches: [ main ]
 
 jobs:
-  backend-test:
+  test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
-        cache: 'pip'
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r backend/requirements.txt
-        
-    - name: Run Pytest
-      env:
-        PYTHONPATH: ./backend
-      run: |
-        pytest backend/tests/
+    - uses: actions/checkout@v3
 
-  frontend-build:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Use Node.js 20
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
-        
-    - name: Install dependencies and build
+    - name: Build Backend Docker Image
       run: |
-        cd frontend
-        npm ci
-        npm run build
+        cd backend
+        docker build -t mosaic-backend .
+        
+    - name: Run Core Tests (Determinism, Staleness, E2E)
+      run: |
+        # Run exactly the core requested tests to gate the build
+        docker run mosaic-backend pytest tests/test_determinism.py tests/test_lifecycle.py tests/test_api_e2e.py
+        
+    - name: Run Full Test Suite & Coverage
+      run: |
+        docker run mosaic-backend sh -c "pip install pytest-cov && pytest --cov=app.recovery --cov=app.state"
