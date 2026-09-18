@@ -16,6 +16,7 @@ class CapacityOpportunity(BaseModel):
     available_volume: float
 
 class CandidateRoute(BaseModel):
+    id: str
     shipment_id: str
     vehicle_id: str
     pickup_hub: str
@@ -25,6 +26,9 @@ class CandidateRoute(BaseModel):
     path_min_weight: float
     path_min_volume: float
     is_transfer: bool = False
+    
+    # Metrics computed during evaluation
+    downstream_delay_minutes: float = 0.0
     
     # Metrics for optimization
     delay_minutes: float = 0.0
@@ -97,6 +101,7 @@ class CandidateGenerator:
                 min_v = min(op.available_volume for op in path_ops)
                 
                 candidate = CandidateRoute(
+                    id=f"{shipment.id}_{v.id}",
                     shipment_id=shipment.id,
                     vehicle_id=v.id,
                     pickup_hub=shipment.current_location,

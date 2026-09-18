@@ -14,10 +14,9 @@ def test_shared_scarce_capacity():
     s3 = Shipment(id="S3", weight=20.0, volume=1.0)
     
     # Single vehicle with capacity 100
-    # Provide 1 candidate for each using the same vehicle
-    c1 = CandidateRoute(shipment_id="S1", vehicle_id="V1", path_min_weight=100.0, path_min_volume=10.0, is_feasible=True, pickup_hub="H1", dropoff_hub="H2", pickup_time=now, dropoff_time=now)
-    c2 = CandidateRoute(shipment_id="S2", vehicle_id="V1", path_min_weight=100.0, path_min_volume=10.0, is_feasible=True, pickup_hub="H1", dropoff_hub="H2", pickup_time=now, dropoff_time=now)
-    c3 = CandidateRoute(shipment_id="S3", vehicle_id="V1", path_min_weight=100.0, path_min_volume=10.0, is_feasible=True, pickup_hub="H1", dropoff_hub="H2", pickup_time=now, dropoff_time=now)
+    c1 = CandidateRoute(id="C1", shipment_id="S1", vehicle_id="V1", path_min_weight=100.0, path_min_volume=10.0, is_feasible=True, pickup_hub="H1", dropoff_hub="H2", pickup_time=now, dropoff_time=now)
+    c2 = CandidateRoute(id="C2", shipment_id="S2", vehicle_id="V1", path_min_weight=100.0, path_min_volume=10.0, is_feasible=True, pickup_hub="H1", dropoff_hub="H2", pickup_time=now, dropoff_time=now)
+    c3 = CandidateRoute(id="C3", shipment_id="S3", vehicle_id="V1", path_min_weight=100.0, path_min_volume=10.0, is_feasible=True, pickup_hub="H1", dropoff_hub="H2", pickup_time=now, dropoff_time=now)
     
     opt = ORToolsOptimizer(shipments=[s1, s2, s3], all_candidates=[c1, c2, c3])
     result = opt.solve()
@@ -37,12 +36,12 @@ def test_no_feasible_piggyback():
     
     # All candidates failed constraints
     c1 = CandidateRoute(
-        shipment_id="S1", vehicle_id="V1", path_min_weight=100.0, path_min_volume=10.0,
+        id="C1", shipment_id="S1", vehicle_id="V1", path_min_weight=100.0, path_min_volume=10.0,
         is_feasible=False, rejection_reason=RejectionReason.DEADLINE_IMPOSSIBLE,
         pickup_hub="H1", dropoff_hub="H2", pickup_time=now, dropoff_time=now
     )
     c2 = CandidateRoute(
-        shipment_id="S1", vehicle_id="V2", path_min_weight=100.0, path_min_volume=10.0,
+        id="C2", shipment_id="S1", vehicle_id="V2", path_min_weight=100.0, path_min_volume=10.0,
         is_feasible=False, rejection_reason=RejectionReason.INSUFFICIENT_CAPACITY,
         pickup_hub="H1", dropoff_hub="H2", pickup_time=now, dropoff_time=now
     )
@@ -61,8 +60,8 @@ def test_shadow_plan():
     
     # Two identical viable candidates but different vehicles
     # c1 is slightly better on cost
-    c1 = CandidateRoute(shipment_id="S1", vehicle_id="V1", path_min_weight=100.0, path_min_volume=10.0, is_feasible=True, incremental_cost=10.0, pickup_hub="H1", dropoff_hub="H2", pickup_time=now, dropoff_time=now)
-    c2 = CandidateRoute(shipment_id="S1", vehicle_id="V2", path_min_weight=100.0, path_min_volume=10.0, is_feasible=True, incremental_cost=20.0, pickup_hub="H1", dropoff_hub="H2", pickup_time=now, dropoff_time=now)
+    c1 = CandidateRoute(id="C1", shipment_id="S1", vehicle_id="V1", path_min_weight=100.0, path_min_volume=10.0, is_feasible=True, incremental_cost=10.0, pickup_hub="H1", dropoff_hub="H2", pickup_time=now, dropoff_time=now)
+    c2 = CandidateRoute(id="C2", shipment_id="S1", vehicle_id="V2", path_min_weight=100.0, path_min_volume=10.0, is_feasible=True, incremental_cost=20.0, pickup_hub="H1", dropoff_hub="H2", pickup_time=now, dropoff_time=now)
     
     opt = ORToolsOptimizer(shipments=[s1], all_candidates=[c1, c2])
     result = opt.solve()

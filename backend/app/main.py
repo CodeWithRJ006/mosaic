@@ -14,6 +14,13 @@ app.add_middleware(
 
 app.include_router(ws_router)
 
+from app.recovery.receipt import DecisionReceipt
+
 @app.get("/health")
 def health_check():
     return {"status": "ok", "message": "backend healthy"}
+
+@app.get("/recovery/{shipment_id}", response_model=DecisionReceipt)
+def get_recovery_plan(shipment_id: str):
+    # Stub endpoint demonstrating the API response shape for the frontend
+    pass
