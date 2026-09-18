@@ -85,22 +85,37 @@ export default function ControlTowerScreen() {
     };
   }, []);
 
-  // Render Hubs once they load
+  // Render Hubs and fit map to them
   useEffect(() => {
     if (!map.current || hubs.length === 0) return;
-    
+
+    let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+
     hubs.forEach(h => {
+      if (h.lat < minLat) minLat = h.lat;
+      if (h.lat > maxLat) maxLat = h.lat;
+      if (h.lon < minLng) minLng = h.lon;
+      if (h.lon > maxLng) maxLng = h.lon;
+
       const el = document.createElement('div');
       el.className = 'w-4 h-4 rounded-sm bg-slate-700 border border-slate-500';
-      new maplibregl.Marker(el)
+      el.title = `${h.name} (${h.id})`;
+      new maplibregl.Marker({ element: el })
         .setLngLat([h.lon, h.lat])
         .addTo(map.current!);
     });
+
+    if (minLat <= maxLat && minLng <= maxLng) {
+      map.current.fitBounds(
+        [[minLng, minLat], [maxLng, maxLat]],
+        { padding: 80, duration: 1500 }
+      );
+    }
   }, [hubs]);
 
   // Render Vehicles
   useEffect(() => {
-    if (!map.current || Object.keys(hubCoords).length === 0) return;
+    if (!map.current || vehicles.length === 0) return;
     
     vehicles.forEach(v => {
       const coords = hubCoords[v.current_location];
@@ -109,7 +124,8 @@ export default function ControlTowerScreen() {
       if (!vehicleMarkers.current[v.id]) {
         const el = document.createElement('div');
         el.className = 'w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]';
-        vehicleMarkers.current[v.id] = new maplibregl.Marker(el)
+        el.title = `Vehicle ${v.id}`;
+        vehicleMarkers.current[v.id] = new maplibregl.Marker({ element: el })
           .setLngLat(coords)
           .addTo(map.current!);
       } else {
@@ -120,31 +136,24 @@ export default function ControlTowerScreen() {
 
   // Render Shipments & Compute Stats
   useEffect(() => {
-    if (!map.current || Object.keys(hubCoords).length === 0) return;
+    if (!map.current || shipments.length === 0) return;
 
     shipments.forEach(s => {
-      // Find actual coordinates
-      let coords = hubCoords[s.current_location];
-      // If it's on a vehicle, get vehicle location
-      if (!coords) {
-        const v = vehicles.find(vh => vh.id === s.current_location);
-        if (v && hubCoords[v.current_location]) {
-          coords = hubCoords[v.current_location];
-        }
-      }
+      const coords = hubCoords[s.current_location];
       if (!coords) return;
 
-      const isDisrupted = s.status === 'MISROUTED' || s.status === 'DELAYED';
+      const isDisrupted = s.status === 'MISROUTED' || s.status === 'DELAYED' || s.status === 'EXCEPTION';
       
       if (!shipmentMarkers.current[s.id]) {
         const el = document.createElement('div');
         el.className = `w-2 h-2 rounded-full cursor-pointer transition-transform hover:scale-150 ${isDisrupted ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.8)] z-10' : 'bg-blue-400 opacity-60'}`;
+        el.title = `${s.id} — ${s.status}`;
         
         el.addEventListener('click', () => {
           navigate(`/incident/${s.id}`);
         });
 
-        shipmentMarkers.current[s.id] = new maplibregl.Marker(el)
+        shipmentMarkers.current[s.id] = new maplibregl.Marker({ element: el })
           .setLngLat(coords)
           .addTo(map.current!);
       } else {

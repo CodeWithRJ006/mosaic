@@ -16,25 +16,34 @@ class ScenarioGenerator:
         return hubs, vehicles, shipments
 
     def _generate_hubs(self) -> List[Hub]:
-        num_hubs = self.rng.randint(6, 9)
-        names = [
-            "North Metro Hub", "Southside Distribution", "East Valley Center", 
-            "Westend Depot", "Central Gateway", "Airport Freight Terminal", 
-            "Harbor Logistics Point", "Uptown Sorting", "Downtown Express"
+        indian_cities = [
+            ("Delhi Gateway", 28.6139, 77.2090),
+            ("Mumbai Port Hub", 19.0760, 72.8777),
+            ("Bangalore Tech Distribution", 12.9716, 77.5946),
+            ("Chennai Harbor Logistics", 13.0827, 80.2707),
+            ("Kolkata Eastend Depot", 22.5726, 88.3639),
+            ("Hyderabad Central", 17.3850, 78.4867),
+            ("Pune Westside Center", 18.5204, 73.8567),
+            ("Ahmedabad Express Terminal", 23.0225, 72.5714),
+            ("Jaipur North Hub", 26.9124, 75.7873),
+            ("Surat Diamond Hub", 21.1702, 72.8311)
         ]
         
-        # shuffle so we pick exactly num_hubs deterministic names
-        available_names = list(names)
-        self.rng.shuffle(available_names)
+        num_hubs = self.rng.randint(6, 9)
+        self.rng.shuffle(indian_cities)
         
         hubs = []
         for i in range(num_hubs):
+            name, lat, lon = indian_cities[i]
+            # Add tiny random jitter so they aren't perfectly identical across seeds
+            lat += self.rng.uniform(-0.02, 0.02)
+            lon += self.rng.uniform(-0.02, 0.02)
+            
             hubs.append(Hub(
                 id=f"H{i+1}",
-                name=available_names[i],
-                # loosely NYC/NJ bounding box for realism
-                lat=self.rng.uniform(40.5, 40.9),
-                lon=self.rng.uniform(-74.3, -73.7)
+                name=name,
+                lat=lat,
+                lon=lon
             ))
         return hubs
 
