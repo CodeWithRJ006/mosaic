@@ -11,6 +11,7 @@ class RejectedCandidateInfo(BaseModel):
     rejection_reason: str
 
 class DecisionReceipt(BaseModel):
+    plan_id: Optional[str] = None
     shipment_id: str
     status: str
     
