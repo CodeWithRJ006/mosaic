@@ -93,6 +93,7 @@ This generates `benchmark_results.json` and outputs a precise table mapping succ
 
 ## Known Limitations
 
-- **Solve-Time Budget**: The CP-SAT solver is strictly bounded to a 2.0 second search limit to ensure UI responsiveness. Highly complex networks may return feasible rather than provably optimal results.
-- **Scale Tested**: Currently thoroughly benchmarked with 25-node topologies (e.g. subset of Solomon C101 instances) operating under tight SLA constraints. 
+- **Hub Operational Windows**: Block 3 currently uses a simplified mock downtime constraint (2AM-4AM downtime) for hub availability rather than dynamically pulling from a real ERP/WMS schedule API.
+- **Solve-Time Budget**: The CP-SAT solver is strictly bounded to a 2.0 second search limit to ensure sub-second UI responsiveness. Highly complex networks may return feasible rather than provably global optimal results.
+- **Benchmark Data Fidelity**: The `RecoveryBench` tool operates on an embedded subset of the standard Solomon `C101` array (first 25 customer coordinates). The transformer parses this topologically valid structural schema to inject disruptions.
 - **Graph Expansion**: Transfer synchronizations are fully checked for time and volume capacity, but currently the candidate generation logic builds direct edge lists. Multi-hop chains rely on pre-scheduled connections rather than synthesizing completely new chained transfers from scratch.
