@@ -1,23 +1,47 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { wsClient } from './lib/ws';
+import ControlTowerScreen from './screens/ControlTowerScreen';
+import IncidentScreen from './screens/IncidentScreen';
+import { Navigation } from 'lucide-react';
 
 function App() {
-  const [message, setMessage] = useState<string>('Loading...')
+  const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    fetch('http://localhost:8000/health')
-      .then(res => res.json())
-      .then(data => setMessage(data.message))
-      .catch(() => setMessage('Error connecting to backend'))
-  }, [])
+    wsClient.connect();
+    const unsub = wsClient.subscribe(() => {
+      setConnected(true);
+    });
+    return unsub;
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-md text-center">
-        <h1 className="text-2xl font-bold mb-4 text-blue-600">MOSAIC Control Tower</h1>
-        <p className="text-lg text-gray-700 font-mono">Backend status: {message}</p>
+    <BrowserRouter>
+      <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
+        <header className="bg-slate-950 border-b border-slate-800 p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-blue-400 font-bold text-xl tracking-tight">
+            <Navigation className="w-6 h-6" />
+            MOSAIC
+          </div>
+          <div className="flex items-center gap-4 text-sm">
+            <span className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+              Live Feed
+            </span>
+            <Link to="/" className="text-slate-300 hover:text-white transition-colors">Control Tower</Link>
+          </div>
+        </header>
+        
+        <main className="flex-1 flex flex-col">
+          <Routes>
+            <Route path="/" element={<ControlTowerScreen />} />
+            <Route path="/incident/:shipmentId" element={<IncidentScreen />} />
+          </Routes>
+        </main>
       </div>
-    </div>
-  )
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;

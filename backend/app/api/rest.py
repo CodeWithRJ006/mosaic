@@ -26,6 +26,18 @@ def get_state(db: Session = Depends(get_db)):
         "hubs": [h.id for h in db.query(Hub).all()]
     }
 
+@router.get("/shipments")
+def get_shipments(db: Session = Depends(get_db)):
+    return db.query(Shipment).all()
+
+@router.get("/vehicles")
+def get_vehicles(db: Session = Depends(get_db)):
+    return db.query(Vehicle).all()
+
+@router.get("/hubs")
+def get_hubs(db: Session = Depends(get_db)):
+    return db.query(Hub).all()
+
 class GenericEventReq(Dict[str, Any]):
     pass
 
