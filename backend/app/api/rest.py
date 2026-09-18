@@ -210,3 +210,62 @@ def get_plans(shipment_id: str, db: Session = Depends(get_db)):
         "incremental_cost": p.incremental_cost,
         "extra_distance": p.extra_distance
     } for p in plans]
+
+@router.get("/recovery/{shipment_id}/autopsy")
+def get_autopsy(shipment_id: str, db: Session = Depends(get_db)):
+    shipment = db.query(Shipment).filter(Shipment.id == shipment_id).first()
+    if not shipment:
+        raise HTTPException(status_code=404, detail="Shipment not found")
+        
+    # Get active or delivered plan
+    plan = db.query(RecoveryPlan).filter(
+        RecoveryPlan.incident_id == shipment_id,
+        RecoveryPlan.status.in_(["APPROVED", "EXECUTING", "DELIVERED", "INVALIDATED"])
+    ).order_by(RecoveryPlan.created_at.desc()).first()
+    
+    # Baseline comparison (nearest feasible)
+    now = datetime.now(timezone.utc)
+    gen = CandidateGenerator(db, current_time=now)
+    candidates = gen.generate_candidates(shipment)
+    
+    feasible_cands = []
+    for c in candidates:
+        v = db.query(Vehicle).filter(Vehicle.id == c.vehicle_id).first()
+        feasible, _ = HardConstraintFilter.evaluate(
+            shipment=shipment, vehicle=v, pickup_hub=c.pickup_hub, dropoff_hub=c.dropoff_hub,
+            pickup_time=c.pickup_time, dropoff_time=c.dropoff_time, current_time=now,
+            path_min_capacity_weight=c.path_min_weight, path_min_capacity_volume=c.path_min_volume
+        )
+        if feasible:
+            feasible_cands.append(c)
+            
+    baseline_cand = min(feasible_cands, key=lambda x: x.distance) if feasible_cands else None
+    
+    # Get timeline
+    all_events = db.query(Event).order_by(Event.timestamp.asc()).all()
+    timeline = []
+    for e in all_events:
+        if shipment_id in str(e.payload):
+            timeline.append({
+                "type": e.type,
+                "timestamp": e.timestamp.isoformat(),
+                "payload": e.payload,
+                "state_version": e.state_version
+            })
+
+    return {
+        "shipment_id": shipment_id,
+        "actual_plan": {
+            "eta": plan.eta.isoformat() if plan else None,
+            "cost": plan.incremental_cost if plan else 0.0,
+            "distance": plan.extra_distance if plan else 0.0,
+            "transfers": len(plan.vehicles) - 1 if plan else 0
+        },
+        "baseline_plan": {
+            "eta": baseline_cand.dropoff_time.isoformat() if baseline_cand else None,
+            "cost": baseline_cand.incremental_cost if baseline_cand else 0.0,
+            "distance": baseline_cand.distance if baseline_cand else 0.0,
+            "transfers": baseline_cand.transfers if baseline_cand else 0
+        } if baseline_cand else None,
+        "timeline": timeline
+    }

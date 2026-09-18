@@ -5,6 +5,8 @@ import ControlTowerScreen from './screens/ControlTowerScreen';
 import IncidentScreen from './screens/IncidentScreen';
 import RecoveryScreen from './screens/RecoveryScreen';
 import DecisionTraceScreen from './screens/DecisionTraceScreen';
+import JudgeModeScreen from './screens/JudgeModeScreen';
+import AutopsyScreen from './screens/AutopsyScreen';
 import { Navigation } from 'lucide-react';
 
 function App() {
@@ -32,15 +34,18 @@ function App() {
               Live Feed
             </span>
             <Link to="/" className="text-slate-300 hover:text-white transition-colors">Control Tower</Link>
+            <Link to="/judge" className="text-amber-400/80 hover:text-amber-400 transition-colors font-semibold">Judge Mode</Link>
           </div>
         </header>
         
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col relative">
           <Routes>
             <Route path="/" element={<ControlTowerScreen />} />
             <Route path="/incident/:shipmentId" element={<IncidentScreen />} />
             <Route path="/recovery/:shipmentId" element={<RecoveryScreen />} />
             <Route path="/trace/:shipmentId" element={<DecisionTraceScreen />} />
+            <Route path="/judge" element={<JudgeModeScreen />} />
+            <Route path="/autopsy/:shipmentId" element={<AutopsyScreen />} />
           </Routes>
         </main>
       </div>

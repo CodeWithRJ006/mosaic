@@ -90,5 +90,10 @@ export const api = {
       method: 'POST'
     });
     return res.json();
+  },
+
+  async getAutopsy(shipmentId: string) {
+    const res = await fetch(`${API_BASE}/recovery/${shipmentId}/autopsy`);
+    return res.json();
   }
 };

@@ -97,14 +97,22 @@ export default function IncidentScreen() {
             <h3 className="text-lg font-semibold">MOSAIC Recovery Engine</h3>
             <p className="text-sm text-slate-400">Search temporal capacity graph and generate optimization bounds.</p>
           </div>
-          <button 
-            onClick={handleGenerate}
-            disabled={generating}
-            className="bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-400 text-white px-6 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors shadow-lg shadow-blue-500/20"
-          >
-            {generating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Play className="w-4 h-4" />}
-            {generating ? 'Running CP-SAT...' : 'Generate Recovery'}
-          </button>
+          <div className="flex gap-4">
+            <button 
+              onClick={() => navigate(`/autopsy/${shipment.id}`)}
+              className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-6 py-2 rounded-lg font-semibold transition-colors"
+            >
+              Network Autopsy
+            </button>
+            <button 
+              onClick={handleGenerate}
+              disabled={generating || shipment.status === 'DELIVERED'}
+              className="bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-400 text-white px-6 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors shadow-lg shadow-blue-500/20"
+            >
+              {generating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Play className="w-4 h-4" />}
+              {generating ? 'Running CP-SAT...' : 'Generate Recovery'}
+            </button>
+          </div>
         </div>
 
       </div>
